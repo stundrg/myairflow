@@ -19,19 +19,32 @@ with DAG(
     make_data = BashOperator(
         task_id="b_1", 
         bash_command=f"""
-            echo "TODO"
+            echo "make data"
+            bash /home/wsl/airflow/make_data.sh /home/wsl/data/{{data_interval_start.in_tz('Asia/Seoul').strftime('%Y/%m/%d/%H')}}
         """
     )
     
     def f_load_data(path):
         print(path, "=====================>")
-        import time
-        time.sleep(60)
+        from myairflow.imsi import my_plus
+        print(my_plus(1, 2), "+++++++++++++++++++++++")
 
     load_data = PythonVirtualenvOperator(
         task_id="load_data",
         python_callable=f_load_data,
-        requirements=[],
+        requirements=["git+https://github.com/stundrg/myairflow.git@0.1.0"],
+        op_args=["{{ data_interval_start.in_tz('Asia/Seoul').strftime('%Y/%m/%d/%H') }}"],
+        )
+    
+    def f_agg_data(path):
+        print(path, "=====================>")
+        from myairflow.imsi import my_plus
+        print(my_plus(1, 2), "+++++++++++++++++++++++")
+        
+    agg_data = PythonVirtualenvOperator(
+        task_id="agg_data",
+        python_callable=f_agg_data,
+        requirements=["git+https://github.com/stundrg/myairflow.git@0.1.0"],
         op_args=["{{ data_interval_start.in_tz('Asia/Seoul').strftime('%Y/%m/%d/%H') }}"],
         )
     
