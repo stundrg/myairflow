@@ -7,8 +7,7 @@ with DAG("hello",
         # schedule=timedelta(days=1),
         schedule="* * * * *",
         # schedule="@hourly",
-        # schedule="@hourly",
-        start_date=datetime(2025, 3, 10)
+        start_date=datetime(2025, 3, 11)
         
 ) as dag:
     

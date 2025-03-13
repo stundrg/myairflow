@@ -2,12 +2,7 @@ from datetime import datetime, timedelta
 from airflow.models.dag import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
-from airflow.utils.trigger_rule import TriggerRule
-from airflow.models import Variable
 import pendulum
-import requests
-import os
 
 def generate_bash_commands(columns: list):
     cmds = []
@@ -19,39 +14,10 @@ def generate_bash_commands(columns: list):
     return "\n".join(cmds)
 
 local_tz = pendulum.timezone("Asia/Seoul")
-
-def print_kwargs(**kwargs):
-    print("kwargs=======>", kwargs)
-    for k, v in kwargs.items():
-        print(f"{k} : {v}")
-        # 코코와 파이썬 데스
-        # 디스코드 noti 보내던 코드를 여기에 넣으면 돌아간대요! 쩔어
-        # "<DAG_ID> <TASK_ID> <YYYYMMDDHH> OK/현룡" 형식으로 메시지를 보내보세요.
-        #
-        
-
-        WEBHOOK_ID = Variable.get("WEBHOOK_ID") 
-        WEBHOOK_TOKEN = Variable.get("WEBHOOK_TOKEN")  
-        WEBHOOK_URL = f"https://discordapp.com/api/webhooks/{WEBHOOK_ID}/{WEBHOOK_TOKEN}"
-
-        dag_id = kwargs['dag'].dag_id
-        task_id = kwargs['task_instance'].task_id
-        execution_date = kwargs['execution_date'].strftime('%Y%m%d%H')  
-        
-  
-        message = f"{dag_id} {task_id} {execution_date} OK/현룡"
-        data = {"content": message}
-
-
-        requests.post(WEBHOOK_URL, json=data)
-            
-
-
-
     
 # Directed Acyclic Graph
 with DAG(
-    "seoul",
+    "ssoul",
     schedule="@hourly",
     # start_date=datetime(2025, 3, 10)
     start_date=pendulum.datetime(2025, 3, 11, tz="Asia/Seoul")
@@ -100,30 +66,20 @@ with DAG(
                         echo "data_interval_start : {{ data_interval_start.in_tz('Asia/Seoul') }}"
                         """)
     mkdir_cmd = """
-                echo "data_interval_start : {{ data_interval_start.in_tz('Asia/Seoul') }}",
-                mkdir -p ~/data/seoul/{{data_interval_start.in_tz('Asia/Seoul').strftime('%Y/%m/%d/%H')}}
+                mkdir -p ~/data/seoul/{{ds_nodash}}         
                 """
-    
-    send_notification = PythonOperator(
-        task_id="send_notification",
-        python_callable=print_kwargs,
-        # trigger_rule=TriggerRule.ONE_FAILED  # ✅ 하나라도 실패하면 실행됨
-    )
-
     
     mkdir = BashOperator(task_id="mkdir", bash_command 
                         = mkdir_cmd)
     
-    start >> b1 >> [b2_1, b2_2] >> mkdir
-    mkdir >> send_notification
-    mkdir >> end
+    start >> b1 >> [b2_1, b2_2] >> mkdir >> end
+    
+    
     # start >> b1
     # b1 >> [b2_1, b2_2]
     # [b2_1, b2_2] >> end
     
     # start >> b1 >> b2_1
     # b1 >> b2_2
-    # [b2_1, b2_2] >> end 
+    # [b2_1, b2_2] >> end
     
-if __name__ == "__main__":
-    dag.test()
