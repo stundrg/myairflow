@@ -4,7 +4,7 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonVirtualenvOperator
 import pendulum
 
-# ✅ DAG 설정
+# DAG 설정
 with DAG(
     "myetl",
     schedule="@hourly",
@@ -24,12 +24,12 @@ with DAG(
         """,
     )
 
-    # ✅ CSV → Parquet 변환
+    #  CSV → Parquet 변환
     def run_load_data(input_path):
         """CSV 데이터를 Parquet으로 변환하는 함수"""
         from myetl.load_data import load_data  
         output_path = input_path.replace("data.csv", "data.parquet")  
-        print(f"✅ Load Data 실행: {input_path} → {output_path}")
+        print(f" Load Data 실행: {input_path} → {output_path}")
         load_data(input_path, output_path)
 
     load_data = PythonVirtualenvOperator(
@@ -42,12 +42,12 @@ with DAG(
         op_args=["/home/wsl/data/{{ data_interval_start.in_tz('Asia/Seoul').strftime('%Y/%m/%d/%H') }}/data.csv"],  
     )
 
-    # ✅ Parquet → Aggregation 후 CSV 저장
+    #  Parquet → Aggregation 후 CSV 저장
     def run_agg_data(input_path):
         """Parquet 데이터를 Aggregation 후 CSV로 변환하는 함수"""
         from myetl.agg_data import agg_data  # 
         output_path = input_path.replace("data.parquet", "agg.csv") 
-        print(f"✅ Agg Data 실행: {input_path} → {output_path}")
+        print(f" Agg Data 실행: {input_path} → {output_path}")
         agg_data(input_path, output_path)
 
     agg_data = PythonVirtualenvOperator(
