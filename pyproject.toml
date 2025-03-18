@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "khr0106", email = "kanghr990106@gmail.com"},
 ]
-dependencies = []
+dependencies = ["pandas>=2.2.3", "pyarrow>=19.0.1", "fastparquet>=2024.11.0"]
 requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
@@ -20,4 +20,7 @@ distribution = true
 [dependency-groups]
 test = [
     "pytest>=8.3.5",
+]
+dev = [
+    "jupyterlab>=4.3.6",
 ]
