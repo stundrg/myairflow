@@ -24,3 +24,6 @@ test = [
 dev = [
     "jupyterlab>=4.3.6",
 ]
+note = [
+    "tabulate>=0.9.0",
+]

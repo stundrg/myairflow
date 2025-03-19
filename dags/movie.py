@@ -28,7 +28,7 @@ with DAG(
 
     def branch_fun(ds_nodash):
         import os
-        check_path = os.path.expanduser(f"{BASE_DIR}/{ds_nodash}")
+        check_path = os.path.expanduser(f"{BASE_DIR}/dt={ds_nodash}")
         if os.path.exists(check_path):
             return rm_dir.task_id
         else:
@@ -41,25 +41,33 @@ with DAG(
     
     def fn_merge_data(ds_nodash):
         print(ds_nodash)
-        
+        # df read => ~/temp/movie/dt=20240101
+        # df1 = fill_na_with_column(df, 'multiMovieYn')
+        # df2 = fill_na_with_column(df1, 'repNationCd')
+        # df3 = df2.drop(columns = ['rnum','rank','rankInten','salesShare'])
+        # unique_df = df3.drop_duplicates()
+        # unique_df.loc[:,'rnum'] = unique_df
     
-        
     merge_data = PythonVirtualenvOperator(
         task_id='merge.data',
         python_callable=fn_merge_data,
         system_site_packages=False,
         requirements=REQUIREMENTS,
     )
+    
+
+
+
 
     def common_get_data(ds_nodash, url_param, base_path):
         from movie.api.call import call_api, list2df, save_df
         print(ds_nodash, url_param)
         
-    # TO Airflow Dag
+        # TO Airflow Dag
         data = call_api(dt=ds_nodash, url_param=url_param)
         df = list2df(data, ds_nodash, url_param)
         partitions = ['dt'] + list(url_param.keys())
-        save_path = save_df(df, base_path,partitions)
+        save_path = save_df(df, base_path, partitions)
         
         print("::group::movie df save")
         print("save_path ---->" + save_path)
@@ -137,6 +145,14 @@ with DAG(
     get_start = EmptyOperator(task_id='get.start',trigger_rule="all_done")
     get_end = EmptyOperator(task_id='get.end')
     
+    make_done = BashOperator(
+        task_id='make.done',
+        bash_command="""
+        DONE_BASE=/home/wsl/data/movies/done/dailyboxoffice
+        mkdir -p $DONE_BASE/{{ ds_nodash }}
+        touch $DONE_BASE/{{ ds_nodash }}/_DONE
+        """
+    )
 
     start >> branch_op
 
@@ -145,4 +161,4 @@ with DAG(
     branch_op >> echo_task
     get_start >> [multi_y, multi_n, nation_k, nation_f, no_param] >> get_end
 
-    get_end >> merge_data >> end
+    get_end >> merge_data >> make_done >> end
