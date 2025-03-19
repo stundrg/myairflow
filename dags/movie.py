@@ -19,11 +19,11 @@ with DAG(
     description='movie',
     schedule="10 10 * * *",
     start_date=datetime(2024, 1, 1),
-    end_date=datetime(2024, 1, 6),
+    end_date=datetime(2025, 1, 1),
     catchup=True,
     tags=['api', 'movie'],
 ) as dag:
-    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@0.2.5"]
+    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@0.3.0"]
     BASE_DIR = "~/data/movies/dailyboxoffice"
 
     def branch_fun(ds_nodash):
@@ -39,24 +39,29 @@ with DAG(
         python_callable=branch_fun
     )
     
-    def fn_merge_data(ds_nodash):
-        print(ds_nodash)
-        # df read => ~/temp/movie/dt=20240101
-        # df1 = fill_na_with_column(df, 'multiMovieYn')
-        # df2 = fill_na_with_column(df1, 'repNationCd')
-        # df3 = df2.drop(columns = ['rnum','rank','rankInten','salesShare'])
-        # unique_df = df3.drop_duplicates()
-        # unique_df.loc[:,'rnum'] = unique_df
-    
+
+
+
+
+    def fn_merge_data(ds_nodash, base_read, base_save):
+        from movie.api.call import fill_unique_ranking
+        save_path = fill_unique_ranking(ds_nodash, base_read, base_save)
+        
+        print("::group::movie df merge save...")
+        print(f"save_path ---> {save_path}")
+        print(f"ds_nodash ---> {ds_nodash}")
+        print("::endgroup::")
+
     merge_data = PythonVirtualenvOperator(
         task_id='merge.data',
         python_callable=fn_merge_data,
         system_site_packages=False,
         requirements=REQUIREMENTS,
-    )
-    
-
-
+        op_kwargs={
+                "base_read": BASE_DIR,
+                "base_save": "/home/wsl/data/movies/merge/dailyboxoffice"        
+                }
+)
 
 
     def common_get_data(ds_nodash, url_param, base_path):
@@ -161,4 +166,4 @@ with DAG(
     branch_op >> echo_task
     get_start >> [multi_y, multi_n, nation_k, nation_f, no_param] >> get_end
 
-    get_end >> merge_data >> make_done >> end
+    get_end >> merge_data >> make_done >> end 
