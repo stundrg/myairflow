@@ -23,7 +23,7 @@ with DAG(
     catchup=True,
     tags=['api', 'movie'],
 ) as dag:
-    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@0.3.0"]
+    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@0.3.5"]
     BASE_DIR = "~/data/movies/dailyboxoffice"
 
     def branch_fun(ds_nodash):
