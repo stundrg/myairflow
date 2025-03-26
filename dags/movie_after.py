@@ -26,9 +26,9 @@ with DAG(
     catchup=True,
     tags=["api", "movie", "sensor"],
 ) as dag:
-    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@main"]
+    REQUIREMENTS = ["git+https://github.com/stundrg/movie.git@0.5.0"]
     BASE_DIR = f"~/data/{DAG_ID}"
-    BASE_LOAD = f"~/data/movies/dailyboxoffice"
+    BASE_LOAD = "/home/wsl/data/movies/merge/dailyboxoffice"
     
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
@@ -46,31 +46,27 @@ with DAG(
         from movie.api.call import load_meta_data, save_meta_data, fillna_meta
         import os
         import pandas as pd
-
-        previous_df = load_meta_data(base_path)
-        print(f"📂 이전 메타 rows: {0 if previous_df is None else len(previous_df)}")
-
-        current_path = os.path.expanduser(f"{base_load}/dt={ds_nodash}")
-        print(f"📂 current_path: {current_path}")
-        print(f"📂 실제 존재하나?: {os.path.exists(current_path)}")
-        if not os.path.exists(current_path):
-            print(f"❌ 데이터 없음: {current_path}")
-            return None
-
-        current_df = pd.read_parquet(current_path)
-        print(f"📥 현재 데이터 rows: {len(current_df)}")
-
-        merged_df = fillna_meta(previous_df, current_df)
-        print(f"📊 병합 후 rows: {len(merged_df)}")
-
-        save_path = save_meta_data(base_path, merged_df)
-        print(f"✅ 메타 데이터 저장 완료 : {save_path}")
-        return merged_df
+        
+        meta_path = f"{base_path}/meta/meta.parquet"
+        
+        current_df = pd.read_parquet(f'{base_load}/dt={ds_nodash}')[
+                ['movieCd', 'multiMovieYn', 'repNationCd']
+            ]
+        
+        if os.path.exists(meta_path):
+            previous_df = load_meta_data(meta_path)
+            new_meta_df = fillna_meta(previous_df, current_df)
+        else:
+            new_meta_df = current_df
+        
+        save_path = save_meta_data(base_path, new_meta_df)
+        print(f"✅ 메타 데이터 저장 완료 : {save_path}")     
 
     gen_meta = PythonVirtualenvOperator(
         task_id="gen.meta",
         python_callable=fn_gen_meta,
         requirements=REQUIREMENTS,
+        
         system_site_packages=False,
         op_kwargs={
             "base_path": BASE_DIR,
@@ -79,28 +75,39 @@ with DAG(
         
     )
 
-    def fn_gen_movie(base_path, ds_nodash, **kwargs):
+    def fn_gen_movie(base_path, base_load, ds_nodash, **kwargs):
         """ 
         하루 단위 데이터를 메타데이터와 병합하여 저장 
         """
+        print(base_load, ds_nodash, base_path)
         from movie.api.call import load_meta_data, save_df
         import pandas as pd
-        import os
-
+        print("✅ import 완료")
+    
         save_path = f"{base_path}/dailyboxoffice"
-        os.makedirs(save_path, exist_ok=True)
-
-        merged_df = load_meta_data(base_path)
         
+        meta_df = load_meta_data(base_path) # 50 rows
+        current_df = pd.read_parquet(f'{base_load}/dt={ds_nodash}') # 30 rows
         
-        # ✅ 저장 전, 컬럼 확인
-        print("✅ 저장 전 컬럼 확인:", merged_df.columns.tolist())
+        merged_df = current_df.merge(meta_df, on="movieCd", how="left", suffixes=("_current", "_meta"))
+        merged_df["multiMovieYn"] = merged_df["multiMovieYn_meta"].combine_first(merged_df["multiMovieYn_current"])
+        merged_df["repNationCd"] = merged_df["repNationCd_meta"].combine_first(merged_df["repNationCd_current"])
+        final_df = merged_df[current_df.columns]
+        final_df['dt'] = ds_nodash
+        print(final_df)
+        print(len(final_df), len(current_df))
+        save_df(final_df, save_path, partitions=["dt", "multiMovieYn", "repNationCd"])
+        print(f"✅ 데이터 저장 완료")
         
-        if merged_df is not None:
-            save_df(merged_df, save_path, partitions=["dt", "multiMovieYn", "repNationCd"])
-            print(f"✅ 데이터 저장 완료: {save_path}/dt={ds_nodash}")
-        else:
-            print(f"❌ 병합된 데이터 없음: {save_path}/dt={ds_nodash}")
+            
+        # # ✅ 저장 전, 컬럼 확인
+        # print("✅ 저장 전 컬럼 확인:", meta_df.columns.tolist())
+        
+        # if meta_df is not None:
+        #     save_df(meta_df, save_path, partitions=["dt", "multiMovieYn", "repNationCd"])
+        #     print(f"✅ 데이터 저장 완료: {save_path}/dt={ds_nodash}")
+        # else:
+        #     print(f"❌ 병합된 데이터 없음: {save_path}/dt={ds_nodash}")
 
     gen_movie = PythonVirtualenvOperator(
         task_id="gen.movie",
@@ -108,7 +115,8 @@ with DAG(
         requirements=REQUIREMENTS,
         system_site_packages=False,
         op_kwargs={
-            "base_path": BASE_DIR
+            "base_path": BASE_DIR,
+            "base_load": BASE_LOAD
         }
     )
 
