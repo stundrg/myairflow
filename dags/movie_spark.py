@@ -29,7 +29,7 @@ with DAG(
     META_PATH="/home/wsl/data/movie_spark/meta"
     RAW_BASE="/home/wsl/data/movie_after/dailyboxoffice"
     start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end", trigger_rule="all_done")
+    end = EmptyOperator(task_id="end", trigger_rule="done_failed")
     
     def check_exists_meta():
         import os
