@@ -20,16 +20,16 @@ with DAG(
     description="movie spark sbumit",
     schedule="10 10 * * *",
     start_date=datetime(2024, 1, 1),
-    end_date=datetime(2024, 1, 2),
+    end_date=datetime(2025, 1, 1),
     catchup=True,
-    tags=["spark", "sbumit", "movie"],
+    tags=["spark", "submit", "movie"],
 ) as dag:
     SPARK_HOME="/home/wsl/app/spark-3.5.1-bin-hadoop3"
     SCRIPT_BASE="/home/wsl/code/myairflow/pyspark"
     META_PATH="/home/wsl/data/movie_spark/meta"
     RAW_BASE="/home/wsl/data/movie_after/dailyboxoffice"
     start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end", trigger_rule="done_failed")
+    end = EmptyOperator(task_id="end", trigger_rule="none_failed")
     
     def check_exists_meta():
         import os

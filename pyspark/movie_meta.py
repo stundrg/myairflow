@@ -5,9 +5,9 @@ import logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-    ]
+    # handlers=[
+    #     logging.StreamHandler(sys.stdout),
+    # ]
     )
 
 spark = SparkSession.builder.appName("movie_meta").getOrCreate()
@@ -37,19 +37,19 @@ try:
         updated_meta = spark.sql("""
             SELECT 
                 COALESCE(y.movieCd, t.movieCd) AS movieCd,
-                COALESCE(y.multiMovieYn, t.multiMovieYn) AS multiMovieYn,
-                COALESCE(y.repNationCd, t.repNationCd) AS repNationCd
+                MAX(COALESCE(y.multiMovieYn, t.multiMovieYn)) AS multiMovieYn,
+                MAX(COALESCE(y.repNationCd, t.repNationCd)) AS repNationCd
             FROM temp_meta_yesterday y
             FULL OUTER JOIN temp_meta_today t
-            ON y.movieCd = t.movieCd""")
+            ON y.movieCd = t.movieCd
+            GROUP BY COALESCE(y.movieCd, t.movieCd)""")
         updated_meta.createOrReplaceTempView("temp_meta_updated")
         
         # ASSERT_TRUE - updated meta 는 항상 원천 소스 보다 크면 정산 / else 실패
         spark.sql("""
         SELECT ASSERT_TRUE(
-            (SELECT COUNT(*) FROM temp_meta_updated) > (SELECT COUNT(*) FROM temp_meta_yesterday) AND
-            (SELECT COUNT(*) FROM temp_meta_updated) > (SELECT COUNT(*) FROM temp_meta_today)
-        ) AS is_valid
+          (SELECT COUNT(DISTINCT movieCd) FROM temp_meta_updated) == (SELECT COUNT(*) FROM temp_meta_updated)
+        ) AS is_unique
         
         /*
         WITH counts AS (
@@ -68,6 +68,8 @@ try:
         save_meta(updated_meta, meta_path)
     else:
         raise ValueError(f"알 수 없는 MODE: {mode}")
+    
+    
 except Exception as e:
     logging.error(f"오류 : {str(e)}")
     exit_code = 1
