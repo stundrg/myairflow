@@ -4,8 +4,14 @@ version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
     {name = "khr0106", email = "kanghr990106@gmail.com"},
+    {name = "stundrg", email = "khr0106@naver.com"},
 ]
-dependencies = ["pandas>=2.2.3", "pyarrow>=19.0.1", "fastparquet>=2024.11.0"]
+dependencies = [
+    "pandas>=2.2.3",
+    "pyarrow>=19.0.1",
+    "fastparquet>=2024.11.0",
+    "pandasql>=0.7.3",
+]
 requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
